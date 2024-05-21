@@ -1,0 +1,288 @@
+---
+openapi: 3.0.0
+info:
+  title: nephronote
+  description: The APIs for the NephroNote project
+  version: 1.0.0
+servers:
+- url: https://virtserver.swaggerhub.com/nephronote/nephronote-newuserapi/1.0.0
+  description: SwaggerHub API Auto Mocking
+paths:
+  /login:
+    post:
+      tags:
+      - user
+      description: Logs in a user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/login_body'
+        required: true
+      responses:
+        "200":
+          description: Successfully logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_401'
+  /registeruser:
+    post:
+      tags:
+      - user
+      description: Registers a new user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/registeruser_body'
+        required: true
+      responses:
+        "201":
+          description: Successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_201'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400'
+  /healthtracker:
+    post:
+      tags:
+      - health
+      description: Records health data for a user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/healthtracker_body'
+        required: true
+      responses:
+        "201":
+          description: Health data recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_201_1'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400'
+  /personalprofile:
+    post:
+      tags:
+      - user
+      description: Records personal profile data for a user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/personalprofile_body'
+        required: true
+      responses:
+        "201":
+          description: Personal profile recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_201_2'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400'
+components:
+  schemas:
+    login_body:
+      required:
+      - password
+      - username
+      type: object
+      properties:
+        username:
+          type: string
+          description: The username used during registration
+        password:
+          type: string
+          description: The password
+    inline_response_200:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Login successful.
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 123
+            username:
+              type: string
+              example: example_user
+            email:
+              type: string
+              example: user@example.com
+    inline_response_401:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Invalid username or password.
+    registeruser_body:
+      required:
+      - email
+      - firstname
+      - gender
+      - lastname
+      - password
+      - phone_number
+      - username
+      type: object
+      properties:
+        firstname:
+          type: string
+          description: First name of the user
+        lastname:
+          type: string
+          description: Last name of the user
+        email:
+          type: string
+          description: Email of the user
+        username:
+          type: string
+          description: Username for the user
+        password:
+          type: string
+          description: Password for the user
+        gender:
+          type: string
+          description: Gender of the user
+        phone_number:
+          type: string
+          description: Phone number of the user
+      example:
+        firstname: j
+        lastname: doe
+        email: jon@de
+        username: jondoe12
+        password: "9958"
+        gender: male
+        phone_number: "7013847771"
+    inline_response_201:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: User registered successfully.
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 123
+            username:
+              type: string
+              example: jondoe12
+            email:
+              type: string
+              example: jon@de
+    inline_response_400:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Invalid input data.
+    healthtracker_body:
+      required:
+      - blood_pressure
+      - medications
+      - weight
+      type: object
+      properties:
+        weight:
+          type: number
+          description: User's weight
+          format: float
+        blood_pressure:
+          type: string
+          description: User's blood pressure reading
+        medications:
+          type: array
+          description: List of medications the user is taking
+          items:
+            type: string
+      example:
+        weight: 70.5
+        blood_pressure: 120/80
+        medications:
+        - med1
+        - med2
+    inline_response_201_1:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Health data recorded successfully.
+    personalprofile_body:
+      required:
+      - age
+      - first_dialysis_session
+      - medications
+      type: object
+      properties:
+        age:
+          type: integer
+          description: Age of the user
+        first_dialysis_session:
+          type: string
+          description: Date of the first dialysis session
+          format: date
+        medications:
+          type: array
+          description: List of medications the user is taking
+          items:
+            type: string
+      example:
+        age: 45
+        first_dialysis_session: 2023-01-15
+        medications:
+        - med1
+        - med2
+    inline_response_201_2:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Personal profile recorded successfully.
