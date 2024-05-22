@@ -3,30 +3,46 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"nephronote/internal/db"
 	"nephronote/internal/models"
 	"net/http"
 	"time"
-
-	"github.com/labstack/gommon/log"
 )
 
 func PreDialysisHandler(w http.ResponseWriter, req *http.Request) {
-	var session models.DialysisSession
+	var preData models.PreDialysisData
 	decoder := json.NewDecoder(req.Body)
 	fmt.Println("inside Pre-Handler")
-	if err := decoder.Decode(&session); err != nil {
+	if err := decoder.Decode(&preData); err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	log.Error("error before calculating weights")
 
-	session.WeightGain = session.PreWeight - session.DryWeight
-	log.Error("error calculating weights.")
-	session.SessionDate = time.Now().Format("2006-01-02")
+	// Check if UserID exists in the context
+	userID, ok := req.Context().Value("userID").(int)
+	if !ok {
+		fmt.Println("Error: UserID not found in context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	log.Println("PreDialysisHandler: UserID found in context:", userID)
+
+	fmt.Println("UserID:", userID)
+
+	fmt.Println("before session")
+	session := models.DialysisSession{
+		UserID:          userID,
+		PreDialysisData: preData,
+		WeightGain:      preData.PreWeight - preData.DryWeight,
+		SessionDate:     time.Now(),
+	}
+	fmt.Println("after session.")
 
 	err := db.SavePreDialysisData(session)
 	if err != nil {
+		fmt.Println("Error saving pre-dialysis data:", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -40,32 +56,40 @@ func PreDialysisHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func PostDialysisHandler(w http.ResponseWriter, req *http.Request) {
-	var session models.DialysisSession
+	var postData models.PostDialysisData
 	decoder := json.NewDecoder(req.Body)
-	if err := decoder.Decode(&session); err != nil {
+	if err := decoder.Decode(&postData); err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
-	session.WeightLoss = session.PreWeight - session.PostWeight
-
-	err := db.UpdatePostDialysisData(session)
+	sessionID := req.Context().Value("sessionID").(int) // Assuming sessionID is passed in context after pre-dialysis data entry
+	session, err := db.GetDialysisSession(sessionID)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	effective := session.PostWeight == session.DryWeight
-	if effective {
-		fmt.Println("You had an effective dialysis session.")
-	} else {
-		fmt.Println("Drink less water until you get rid off those excess water..")
+	session.PostDialysisData = postData
+	session.WeightLoss = session.PreDialysisData.PreWeight - postData.PostWeight
+
+	err = db.UpdatePostDialysisData(session)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
+
+	effective := session.PostDialysisData.PostWeight == session.PreDialysisData.DryWeight
+	responseMessage := "You had an effective dialysis session."
+	if !effective {
+		responseMessage = "Drink less water until you get rid of the excess water."
+	}
+
 	response := map[string]interface{}{
 		"status":      true,
 		"effective":   effective,
 		"weight_loss": session.WeightLoss,
-		"message":     "Post-dialysis data saved successfully",
+		"message":     responseMessage,
 	}
 	json.NewEncoder(w).Encode(response)
 }

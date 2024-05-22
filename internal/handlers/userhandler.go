@@ -55,7 +55,7 @@ func Register(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(loginResponseWithData)
 }
 
-var JwtKey = []byte("my_secret_key")
+var jwtKey = []byte("ssandeep98") // Replace with your actual secret key
 
 type Claims struct {
 	UserID int `json:"user_id"`
@@ -67,7 +67,6 @@ func Login(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Println("Inside User Login")
 	decoder := json.NewDecoder(req.Body)
-	fmt.Println("After decoding")
 	var loginRequest models.LoginRequest
 	if err := decoder.Decode(&loginRequest); err != nil {
 		fmt.Println("Error decoding request body:", err)
@@ -76,7 +75,6 @@ func Login(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Println("after second decoding")
 
 	if loginRequest.UserName == "" {
 		loginResponse.Status = false
@@ -93,9 +91,8 @@ func Login(w http.ResponseWriter, req *http.Request) {
 		json.NewEncoder(w).Encode(loginResponse)
 		return
 	}
-	fmt.Println("after checking conditions.")
 
-	// Token generation logic
+	// Generate JWT token
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
 		UserID: user.ID,
@@ -105,22 +102,19 @@ func Login(w http.ResponseWriter, req *http.Request) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(JwtKey)
+	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
-		fmt.Println("Error signing the token:", err)
+		fmt.Println("Error generating token:", err)
 		loginResponse.Status = false
 		loginResponse.Msg = "Internal server error"
 		json.NewEncoder(w).Encode(loginResponse)
 		return
 	}
-
 	fmt.Println("Generated Token:", tokenString) // Debugging: Print the generated token
-
 	var loginResponseWithData models.LoginResponseWithData
 	loginResponseWithData.Status = true
 	loginResponseWithData.Msg = ""
 	loginResponseWithData.Data = *user // Use the user data returned by UserDB
 	loginResponseWithData.Token = tokenString
 	json.NewEncoder(w).Encode(loginResponseWithData)
-	fmt.Println("generated response")
 }
