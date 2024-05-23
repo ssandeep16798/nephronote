@@ -22,7 +22,8 @@ func main() {
 	r.PathPrefix("/api/").Subrouter()
 	r.Use(middleware.AuthMiddleware)
 	r.HandleFunc("/pre_dialysis/", handlers.PreDialysisHandler).Methods("POST")
-	r.HandleFunc("/post_dialysis/", handlers.PostDialysisHandler).Methods("POST")
+	r.Use(middleware.AuthMiddleware)
+	r.Handle("/post_dialysis/{sessionID}", middleware.AuthMiddleware(http.HandlerFunc(handlers.PostDialysisHandler))).Methods("POST")
 
 	server := &http.Server{
 		Addr:    ":8080",

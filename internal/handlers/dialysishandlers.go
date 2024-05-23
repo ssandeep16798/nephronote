@@ -3,59 +3,70 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"nephronote/internal/db"
 	"nephronote/internal/models"
 	"net/http"
-	"time"
+	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 func PreDialysisHandler(w http.ResponseWriter, req *http.Request) {
 	var preData models.PreDialysisData
 	decoder := json.NewDecoder(req.Body)
-	fmt.Println("inside Pre-Handler")
 	if err := decoder.Decode(&preData); err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
-	// Check if UserID exists in the context
-	userID, ok := req.Context().Value("userID").(int)
-	if !ok {
-		fmt.Println("Error: UserID not found in context")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	userIDInterface := req.Context().Value("userID")
+	if userIDInterface == nil {
+		http.Error(w, "User ID not found in context", http.StatusInternalServerError)
 		return
 	}
 
-	log.Println("PreDialysisHandler: UserID found in context:", userID)
+	userID, ok := userIDInterface.(int)
+	if !ok {
+		http.Error(w, "User ID not of type int", http.StatusInternalServerError)
+		return
+	}
 
-	fmt.Println("UserID:", userID)
-
-	fmt.Println("before session")
 	session := models.DialysisSession{
 		UserID:          userID,
 		PreDialysisData: preData,
 		WeightGain:      preData.PreWeight - preData.DryWeight,
-		SessionDate:     time.Now(),
 	}
-	fmt.Println("after session.")
 
-	err := db.SavePreDialysisData(session)
+	sessionID, err := db.SavePreDialysisData(session)
 	if err != nil {
-		fmt.Println("Error saving pre-dialysis data:", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
+	fmt.Println("Pre-dialysis data saved successfully with session ID:", sessionID)
+
 	response := map[string]interface{}{
 		"status":      true,
-		"weight_gain": session.WeightGain,
 		"message":     "Pre-dialysis data saved successfully",
+		"weight_gain": session.WeightGain,
+		"session_id":  sessionID, // Add session_id to the response
 	}
 	json.NewEncoder(w).Encode(response)
 }
-
 func PostDialysisHandler(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	sessionIDStr, ok := vars["sessionID"]
+	if !ok {
+		http.Error(w, "Session ID is missing in the URL", http.StatusBadRequest)
+		return
+	}
+
+	sessionID, err := strconv.Atoi(sessionIDStr)
+	if err != nil {
+		http.Error(w, "Invalid session ID format", http.StatusBadRequest)
+		return
+	}
+
 	var postData models.PostDialysisData
 	decoder := json.NewDecoder(req.Body)
 	if err := decoder.Decode(&postData); err != nil {
@@ -63,10 +74,26 @@ func PostDialysisHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sessionID := req.Context().Value("sessionID").(int) // Assuming sessionID is passed in context after pre-dialysis data entry
-	session, err := db.GetDialysisSession(sessionID)
+	userIDInterface := req.Context().Value("userID")
+	if userIDInterface == nil {
+		http.Error(w, "User ID not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	userID, ok := userIDInterface.(int)
+	if !ok {
+		http.Error(w, "User ID not of type int", http.StatusInternalServerError)
+		return
+	}
+
+	session, err := db.GetDialysisSession(sessionID, userID)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Error fetching dialysis session: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if session.UserID != userID {
+		http.Error(w, "Invalid session ID", http.StatusUnauthorized)
 		return
 	}
 

@@ -18,7 +18,7 @@ type PostDialysisData struct {
 }
 
 type DialysisSession struct {
-	ID               int `json:"id"`
+	Session_id       int `json:"session_id"`
 	UserID           int `json:"user_id"`
 	PreDialysisData  PreDialysisData
 	PostDialysisData PostDialysisData
